@@ -1,0 +1,83 @@
+---
+- name: Instalar appWeb con ansible
+  gather_facts: true
+  hosts: all
+  tasks:
+    - name: Instale los paquetes necesarios para que su aplicacion web funcione (mysql)
+      apt:
+        name: mysql-server
+    - name: Instalar python3-pymysql
+      apt:
+        name: python3-pymysql
+    - name: Instalar php-mysqli
+      apt:
+        name: php-mysqli
+    - name: iniciar mysql
+      shell: systemctl start mysql
+    - name: instalr pip
+      apt: 
+        name: pip
+    - name: instalar libapache
+      apt:
+        name: libapache2-mod-php
+    - name: Delete index.html file
+      file:
+        path: /var/www/html/index.html
+        state: absent
+    - name: Establezca la pagina web desarrollada
+      copy:
+        src: /home/admin1/www.egutierrez.com
+        dest: /var/www/html/
+        owner: www-data
+        group: www-data
+        mode: 0750
+    - name: Crear el archivo de la configuracion
+      file:
+        path: /etc/apache2/sites-available/www.egutierrez.com.conf
+        state: touch
+        mode: 0750
+    - name: La pagina web se debe ver en el dominio
+      copy:
+        dest: /etc/apache2/sites-available/www.egutierrez.com.conf
+        content: |
+          <VirtualHost *:80>
+            ServerName www.egutierrez.com
+            ServerAlias www.egutierrez.com
+            DocumentRoot /var/www/html/
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}//access.log combined
+          </VirtualHost>
+    - name: Mostrar curriculum por default 
+      copy:
+        dest: /etc/apache2/sites-available/000-default.conf
+        content: |
+          <VirtualHost *:80>
+            ServerName www.egutierrez.com
+            ServerAlias www.egutierrez.com
+            DocumentRoot /var/www/html/
+            ErrorLog ${APACHE_LOG_DIR}/error.log
+            CustomLog ${APACHE_LOG_DIR}//access.log combined
+          </VirtualHost>
+    - name: Habilitar 000-default.conf
+      shell: a2ensite 000-default.conf
+    - name: crear carpeta del nuevo host
+      file:
+        path: /var/www/egutierrez.com
+        state: directory
+    - name: pasar carpeta
+      copy:
+        src: /home/admin1/app.enriquegutierrez.com
+        dest: /var/www/html/
+        owner: www-data
+        group: www-data
+        mode: 0750    
+    - name: Activar archivo www.egutierrez.com.conf
+      shell: a2ensite www.egutierrez.com.conf
+    - name: volver a cargar el apache
+      shell: systemctl reload apache2  
+    - name: configurar puerto
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: 80
+        jump: ACCEPT
